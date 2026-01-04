@@ -1,22 +1,21 @@
 import type { Tabs } from "../../types/declaration";
+import UploadContent from "./content/UploadContent";
+import ExploreContent from "./content/ExploreContent";
+import UsersContent from "./content/UsersContent";
 
-function DContent({
-  isTablet,
-  currentTab,
-}: {
-  isTablet: boolean;
-  currentTab: Tabs;
-}) {
+function DContent({ currentTab }: { isTablet: boolean; currentTab: Tabs }) {
   return (
     <div className="p-6">
       {(() => {
         switch (currentTab) {
           case "Explore":
-            return <div>Explore Content</div>;
+            return <ExploreContent />;
           case "Upload":
-            return <div>Upload Content</div>;
+            return <UploadContent />;
+          case "Users":
+            return <UsersContent />;
           default:
-            return <div>Explore Content</div>;
+            return <ExploreContent />;
         }
       })()}
     </div>

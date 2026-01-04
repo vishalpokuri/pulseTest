@@ -1,4 +1,5 @@
 import type React from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Tabs } from "../../types/declaration";
 import AltLogo from "../ui/AltLogo";
@@ -7,11 +8,13 @@ import Popover from "../ui/Popover";
 import PopoverItem from "../ui/PopoverItem";
 import { LogOut } from "lucide-react";
 import toast from "react-hot-toast";
-import { SearchIcon, UploadIcon } from "@/Svg/DashboardIcons";
+import { SearchIcon, UploadIcon, UsersIcon } from "@/Svg/DashboardIcons";
+import userService from "@/services/userService";
 
 const tabs: Record<Tabs, React.ReactNode> = {
   Explore: <SearchIcon />,
   Upload: <UploadIcon />,
+  Users: <UsersIcon />,
 };
 
 function DHeader({
@@ -24,6 +27,21 @@ function DHeader({
   currentTab: Tabs;
 }) {
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch current user to determine role
+    const fetchUserRole = async () => {
+      try {
+        const user = await userService.getCurrentUser();
+        setUserRole(user.role);
+      } catch (error) {
+        console.error("Failed to fetch user role:", error);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
@@ -31,12 +49,21 @@ function DHeader({
     toast.success("Logged out successfully");
     window.location.href = "/login";
   };
+
+  // Filter tabs based on user role
+  const visibleTabs = Object.entries(tabs).filter(([key]) => {
+    if (key === "Users") {
+      return userRole === "admin";
+    }
+    return true;
+  });
+
   return (
     <>
       <div className="w-full h-[60px] bg-white border-b-[1px] border-black/20 flex font-reg justify-between items-center px-6 ">
         {!isTablet && <AltLogo />}
         <div className=" flex items-end my-auto mx-auto">
-          {Object.entries(tabs).map(([key, icon]) => (
+          {visibleTabs.map(([key, icon]) => (
             <TabButton
               isTablet={isTablet}
               key={key}

@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: pulse-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=pulse
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - pulse-network
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pulse-backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - MONGODB_URI=mongodb://mongodb:27017/pulse
+      - JWT_SECRET=${JWT_SECRET}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+    depends_on:
+      - mongodb
+    networks:
+      - pulse-network
+    volumes:
+      - ./backend/.env:/app/.env
+
+  # Video Processing Worker
+  processing-worker:
+    build:
+      context: ./processing-worker
+      dockerfile: Dockerfile
+    container_name: pulse-processing-worker
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/pulse
+      - BACKEND_URL=http://backend:4000
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+    depends_on:
+      - mongodb
+      - backend
+    networks:
+      - pulse-network
+    volumes:
+      - ./processing-worker/.env:/app/.env
+      - processing_temp:/app/temp
+
+networks:
+  pulse-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  processing_temp:

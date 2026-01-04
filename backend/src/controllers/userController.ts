@@ -1,87 +1,156 @@
 import type { Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
 import { User } from "../models/userSchema.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "iLovePulseGen";
-
-// Login controller
-export const login = async (req: Request, res: Response): Promise<void> => {
+/**
+ * Get all users (Admin only)
+ */
+export const getAllUsers = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      res.status(400).json({ message: "Username and password are required" });
-      return;
-    }
-
-    const user = await User.findOne({ username });
-
-    if (!user) {
-      res.status(401).json({ message: "Invalid credentials" });
-      return;
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      JWT_SECRET,
-      {
-        expiresIn: "24h",
-      }
-    );
+    const users = await User.find({})
+      .select("-password") // Don't send passwords
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
-      message: "Login successful",
-      token,
-      user: { id: user.id, username: user.username },
+      users,
+      total: users.length,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 };
 
-// Register controller
-export const register = async (req: Request, res: Response): Promise<void> => {
+/**
+ * Get single user by ID (Admin only)
+ */
+export const getUserById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    const { username, password } = req.body;
+    const { id } = req.params;
 
-    if (!username || !password) {
-      res.status(400).json({ message: "Username and password are required" });
+    const user = await User.findById(id).select("-password");
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
       return;
     }
 
-    const existingUser = await User.findOne({ username });
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Failed to fetch user" });
+  }
+};
 
-    if (existingUser) {
-      res.status(400).json({ message: "User already exists, try logging in" });
+/**
+ * Update user role (Admin only)
+ */
+export const updateUserRole = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      res.status(400).json({ message: "Role is required" });
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const validRoles = ["admin", "editor", "viewer"];
+    if (!validRoles.includes(role)) {
+      res.status(400).json({
+        message: `Invalid role. Must be one of: ${validRoles.join(", ")}`,
+      });
+      return;
+    }
 
-    const newUser = await User.create({
-      username,
-      password: hashedPassword,
-    });
+    const user = await User.findByIdAndUpdate(
+      id,
+      { role },
+      { new: true }
+    ).select("-password");
 
-    const token = jwt.sign(
-      { userId: newUser.id, username: newUser.username },
-      JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
 
-    res.status(201).json({
-      message: "User registered successfully",
-      token,
-      user: { id: newUser.id, username: newUser.username },
+    res.status(200).json({
+      message: "User role updated successfully",
+      user,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("Error updating user role:", error);
+    res.status(500).json({ message: "Failed to update user role" });
+  }
+};
+
+/**
+ * Delete user (Admin only)
+ */
+export const deleteUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    // @ts-ignore - userId added by authMiddleware
+    const adminId = req.userId;
+
+    // Prevent admin from deleting themselves
+    if (id === adminId) {
+      res.status(400).json({ message: "Cannot delete your own account" });
+      return;
+    }
+
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(200).json({
+      message: "User deleted successfully",
+      deletedUser: {
+        id: user._id,
+        username: user.username,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ message: "Failed to delete user" });
+  }
+};
+
+/**
+ * Get current user profile
+ */
+export const getCurrentUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    // @ts-ignore - userId added by authMiddleware
+    const userId = req.userId;
+
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+    res.status(500).json({ message: "Failed to fetch user profile" });
   }
 };

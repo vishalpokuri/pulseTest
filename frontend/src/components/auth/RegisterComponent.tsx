@@ -16,8 +16,12 @@ interface RegisterFormData {
 }
 
 interface AuthResponse {
-  access_token: string;
-  token_type: string;
+  message: string;
+  token: string;
+  user: {
+    id: string;
+    username: string;
+  };
 }
 
 function RegisterComponent() {
@@ -43,7 +47,7 @@ function RegisterComponent() {
     try {
       setLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/register`,
+        `${import.meta.env.VITE_BACKEND_URL}/auth/register`,
         {
           method: "POST",
           headers: {
@@ -58,9 +62,9 @@ function RegisterComponent() {
 
       if (response.ok) {
         const data: AuthResponse = await response.json();
-        localStorage.setItem("accessToken", data.access_token);
+        localStorage.setItem("accessToken", data.token);
         toast.success("Account created successfully!");
-        navigate("/login");
+        navigate("/dashboard/explore");
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || "Registration failed");

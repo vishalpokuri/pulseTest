@@ -11,8 +11,12 @@ interface LoginFormData {
 }
 
 interface AuthResponse {
-  access_token: string;
-  token_type: string;
+  message: string;
+  token: string;
+  user: {
+    id: string;
+    username: string;
+  };
 }
 
 function LoginComponent() {
@@ -32,7 +36,7 @@ function LoginComponent() {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/login`,
+        `${import.meta.env.VITE_BACKEND_URL}/auth/login`,
         {
           method: "POST",
           headers: {
@@ -47,9 +51,9 @@ function LoginComponent() {
 
       if (response.ok) {
         const data: AuthResponse = await response.json();
-        localStorage.setItem("accessToken", data.access_token);
+        localStorage.setItem("accessToken", data.token);
         toast.success("Logged in successfully");
-        navigate("/admin");
+        navigate("/dashboard/explore");
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || "Login failed");
