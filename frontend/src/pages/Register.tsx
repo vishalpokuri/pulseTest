@@ -1,4 +1,4 @@
-import Logo from "../components/ui/Logo";
+import Logo from "../components/ui/LogoWText";
 
 import Divider from "../components/auth/Divider";
 import SocialTray from "../components/auth/SocialTray";
