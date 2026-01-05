@@ -16,7 +16,7 @@ export default function VideoPlayer() {
   const { processingProgress } = useSocket();
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
-  
+
   const [video, setVideo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -50,7 +50,11 @@ export default function VideoPlayer() {
   useEffect(() => {
     if (video && isAnalyzing) {
       const progress = processingProgress.get(video.videoId);
-      if (progress && progress.progress === 100 && progress.step === "sensitivity") {
+      if (
+        progress &&
+        progress.progress === 100 &&
+        progress.step === "sensitivity"
+      ) {
         setTimeout(() => {
           fetchVideos();
           setIsAnalyzing(false);
@@ -82,7 +86,7 @@ export default function VideoPlayer() {
         const levels = hls.levels.map((level) => `${level.height}p`);
         setAvailableQualities(levels);
       });
-
+      //@ts-ignore
       hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
         const level = hls.levels[data.level];
         if (currentQuality === "auto") {
@@ -169,7 +173,9 @@ export default function VideoPlayer() {
     try {
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/videos/${video._id}/analyze-sensitivity`,
+        `${import.meta.env.VITE_BACKEND_URL}/videos/${
+          video._id
+        }/analyze-sensitivity`,
         {
           method: "POST",
           headers: {
